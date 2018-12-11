@@ -37,7 +37,7 @@ done
 
 # set our build variables
 export base_image='centos:7'
-export registry='registry.aarnet.net.au/'
+export registry=''
 export xrd_version=${xrd_version:-4.8.3}
 
 if ! [ -v tag ]; then
