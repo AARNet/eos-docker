@@ -20,7 +20,7 @@ The setup script makes use of docker-compose, so this will need to be installed 
 There is an `eos.keytab` file that is empty - this **must** be re-generated for your own environment.
 
 ```
-./build && docker-compose up -d
+./build 
 ```
 
 ## EOS-DOCKER CONTAINER REFERENCE
