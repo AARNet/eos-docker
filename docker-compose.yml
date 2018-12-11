@@ -1,0 +1,227 @@
+version: '2'
+services:
+  mq-master:
+    container_name: mq-master
+    image: registry.aarnet.net.au/eos-citrine-mq:test
+    tty: true
+    privileged: true
+    stdin_open: true
+    env_file:
+    - ./eos-docker.env
+    hostname: mq-master.testnet
+    networks:
+    - testnet
+    volumes:
+    - ./e/eos.keytab:/etc/eos.keytab
+    - ./e/master/log:/var/log/eos
+    - ./e/master/config:/var/eos/config
+    - ./e/master/md:/var/eos/md
+    - ./e/master/ns-queue:/var/eos/ns-queue
+    environment:
+      EOS_SET_MASTER: 1
+
+  mgm-master:
+    container_name: mgm-master
+    image: registry.aarnet.net.au/eos-citrine-mgm:test
+    tty: true
+    privileged: true
+    stdin_open: true
+    env_file:
+    - ./eos-docker.env
+    hostname: mgm-master.testnet
+    networks:
+    - testnet
+    volumes_from:
+    - mq-master
+    environment:
+      EOS_SET_MASTER: 1
+
+  mq-slave:
+    container_name: mq-slave
+    image: registry.aarnet.net.au/eos-citrine-mq:test
+    tty: true
+    privileged: true
+    stdin_open: true
+    env_file:
+    - ./eos-docker.env
+    hostname: mq-slave.testnet
+    networks:
+    - testnet
+    volumes:
+    - ./e/eos.keytab:/etc/eos.keytab
+    - ./e/krb5.keytab:/etc/krb5.keytab
+    - ./e/slave/log:/var/log/eos
+    - ./e/slave/config:/var/eos/config
+    - ./e/slave/md:/var/eos/md
+
+  mgm-slave:
+    container_name: mgm-slave
+    image: registry.aarnet.net.au/eos-citrine-mgm:test
+    tty: true
+    privileged: true
+    stdin_open: true
+    env_file:
+    - ./eos-docker.env
+    hostname: mgm-slave.testnet
+    networks:
+    - testnet
+    volumes_from:
+    - mq-slave
+
+  fst:
+    container_name: fst
+    image: registry.aarnet.net.au/eos-citrine-fst:test
+    tty: true
+    privileged: true
+    stdin_open: true
+    env_file:
+    - ./eos-docker.env
+    hostname: fst.testnet
+    networks:
+    - testnet
+    volumes:
+    - ./e/eos.keytab:/etc/eos.keytab:ro
+    - ./e/log:/var/log/eos
+    - ./e/disks:/disks
+    environment:
+      EOS_MGM_URL: "root://mgm-master.testnet"
+
+  eosd:
+    container_name: eosd
+    image: registry.aarnet.net.au/eos-citrine-eosd:test
+    tty: true
+    privileged: true
+    stdin_open: true
+    pid: "host"
+    env_file:
+    - ./eos-docker.env
+    hostname: eosd.testnet
+    networks:
+    - testnet
+    volumes:
+    - ./e/eos.keytab:/etc/eos.keytab:ro
+    - ./e/log:/var/log/eos
+    - ./e/eos:/eos:shared
+    devices:
+    - /dev/fuse:/dev/fuse:rwm
+    environment:
+      EOS_FUSE_MGM_ALIAS: "mgm-master.testnet"
+    cap_add:
+    - SYS_ADMIN
+
+  eosxd:
+    container_name: eosxd
+    image: registry.aarnet.net.au/eos-citrine-eosxd:test
+    tty: true
+    privileged: true
+    stdin_open: true
+    pid: "host"
+    env_file:
+    - ./eos-docker.env
+    hostname: eosxd.testnet
+    networks:
+    - testnet
+    volumes:
+    - ./e/eos.keytab:/etc/eos.keytab:ro
+    - ./e/log:/var/log/eos
+    - ./e/fusex:/var/eos/fusex
+    - ./e/eosxd:/eos:shared
+    devices:
+    - /dev/fuse:/dev/fuse:rwm
+    environment:
+      EOS_FUSE_MGM_ALIAS: "mgm-master.testnet"
+    cap_add:
+    - SYS_ADMIN
+
+  sync:
+    container_name: sync
+    image: registry.aarnet.net.au/eos-citrine-sync:test
+    tty: true
+    privileged: true
+    stdin_open: true
+    env_file:
+    - ./eos-docker.env
+    hostname: sync.testnet
+    networks:
+    - testnet
+    volumes_from:
+    - mq-slave
+
+  eossync-files:
+    container_name: eossync-files
+    image: registry.aarnet.net.au/eos-citrine-eossync:test
+    tty: true
+    privileged: true
+    stdin_open: true
+    env_file:
+    - ./eos-docker.env
+    volumes_from:
+    - mq-master
+    networks:
+    - testnet
+    environment:
+      SYNC_TYPE: "file"
+      SYNCFILE_NAME: "files"
+      SYNCFILE_TYPE: "mdlog"
+      EOS_MGM_HOST: "mgm-master.testnet"
+      EOS_MGM_HOST_TARGET: "sync.testnet"
+
+  eossync-dirs:
+    container_name: eossync-dirs
+    image: registry.aarnet.net.au/eos-citrine-eossync:test
+    tty: true
+    privileged: true
+    stdin_open: true
+    env_file:
+    - ./eos-docker.env
+    networks:
+    - testnet
+    volumes_from:
+    - mq-master
+    environment:
+      SYNC_TYPE: "file"
+      SYNCFILE_NAME: "directories"
+      SYNCFILE_TYPE: "mdlog"
+      EOS_MGM_HOST: "mgm-master.testnet"
+      EOS_MGM_HOST_TARGET: "sync.testnet"
+
+  eossync-iostat:
+    container_name: eossync-iostat
+    image: registry.aarnet.net.au/eos-citrine-eossync:test
+    tty: true
+    privileged: true
+    stdin_open: true
+    env_file:
+    - ./eos-docker.env
+    networks:
+    - testnet
+    volumes_from:
+    - mq-master
+    environment:
+      SYNC_TYPE: "file"
+      SYNCFILE_NAME: "iostat"
+      SYNCFILE_TYPE: "dump"
+      EOS_MGM_HOST: "mgm-master.testnet"
+      EOS_MGM_HOST_TARGET: "sync.testnet"
+
+  eossync-config:
+    container_name: eossync-config
+    image: registry.aarnet.net.au/eos-citrine-eossync:test
+    tty: true
+    privileged: true
+    stdin_open: true
+    env_file:
+    - ./eos-docker.env
+    networks:
+    - testnet
+    volumes_from:
+    - mq-master
+    environment:
+      SYNC_TYPE: "dir"
+      EOS_MGM_HOST: "mgm-master.testnet"
+      EOS_MGM_HOST_TARGET: "sync.testnet"
+
+networks:
+  testnet:
+    external:
+      name: testnet

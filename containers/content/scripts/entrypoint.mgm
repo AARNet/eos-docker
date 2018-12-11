@@ -1,0 +1,51 @@
+#!/bin/sh
+
+# set variables
+. /etc/sysconfig/eos
+XRD_COREDIR="/var/spool/eos/core"
+EOS_MGM_MASTER_FILE="/var/eos/eos.mgm.rw"
+PATH=$PATH:/sbin
+
+# remove all ipv6
+sed '/ip6/d' /etc/hosts > /etc/tmphosts && cat /etc/tmphosts > /etc/hosts && rm -f /etc/tmphosts && cat /etc/hosts
+sed '/localhost6/d' /etc/hosts > /etc/tmphosts && cat /etc/tmphosts > /etc/hosts && rm -f /etc/tmphosts && cat /etc/hosts
+
+# create tx log folder we mounted the logs volume over
+mkdir -p /var/log/eos/tx
+chown daemon:daemon /var/log/eos/tx
+
+# check eos keytab exists, otherwise create it
+if [ ! -s /etc/eos.keytab ]; then
+    if [ -z ${EOS_INSTANCE_NAME} ]; then
+        echo >&2 EOS_INSTANCE_NAME environment variable not defined
+        exit 1
+    else
+        yes | xrdsssadmin -k ${EOS_INSTANCE_NAME} -u daemon -g daemon add /tmp/eos.keytab
+        cat /tmp/eos.keytab > /etc/eos.keytab
+        rm /tmp/eos.keytab
+    fi
+fi
+
+# check if this node is a master - if so, create the relevant file
+if [ "z${EOS_SET_MASTER}" = "ztrue" ] || [ ${EOS_SET_MASTER} -eq 1 ]; then
+    touch ${EOS_MGM_MASTER_FILE}
+fi
+
+# make sure nslib directive and qdbcluster list aren't already set in xrd.cf.mgm so we don't get duplicate lines
+sed -i '/mgmofs.nslib/d' /etc/xrd.cf.mgm
+sed -i '/mgmofs.qdbcluster/d' /etc/xrd.cf.mgm
+
+# check if we should use quarkdb, otherwise default to in-memory namespace
+if [ "z${EOS_USE_QUARKDB}" = "ztrue" ] || [ ${EOS_USE_QUARKDB} -eq 1 ]; then
+  echo "mgmofs.nslib /usr/lib64/libEosNsQuarkdb.so" >> /etc/xrd.cf.mgm
+  echo "mgmofs.qdbcluster ${EOS_QUARKDB_NODES}" >> /etc/xrd.cf.mgm
+else
+  echo "mgmofs.nslib /usr/lib64/libEosNsInMemory.so" >> /etc/xrd.cf.mgm
+fi
+
+cat /etc/xrd.cf.mgm
+
+# start mgm
+echo "Starting mgm for " $(rpm -q eos-server | sed s/eos-server-//g)
+cd ${XRD_COREDIR}
+exec /usr/bin/xrootd -R daemon -n mgm -c /etc/xrd.cf.mgm -l /var/log/eos/xrdlog.mgm

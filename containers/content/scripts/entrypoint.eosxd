@@ -1,0 +1,11 @@
+#!/bin/bash
+
+function gracefulShutdown {
+  echo "Shutting down gracefully!"
+  umount -f ${EOS_FUSE_MOUNTDIR}
+  killall -KILL eosd
+  umount -f ${EOS_FUSE_MOUNTDIR}
+  exit
+}
+
+exec eosxd -f

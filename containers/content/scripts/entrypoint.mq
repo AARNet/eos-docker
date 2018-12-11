@@ -1,0 +1,33 @@
+#!/bin/sh
+
+# set variables
+. /etc/sysconfig/eos
+XRD_COREDIR="/var/spool/eos/core"
+EOS_MQ_MASTER_FILE="/var/eos/eos.mq.master"
+PATH=$PATH:/sbin
+
+# remove all ipv6
+sed '/ip6/d' /etc/hosts > /etc/tmphosts && cat /etc/tmphosts > /etc/hosts && rm -f /etc/tmphosts && cat /etc/hosts
+sed '/localhost6/d' /etc/hosts > /etc/tmphosts && cat /etc/tmphosts > /etc/hosts && rm -f /etc/tmphosts && cat /etc/hosts
+
+# check eos keytab exists, otherwise create it
+if [ ! -s /etc/eos.keytab ]; then
+    if [ -z ${EOS_INSTANCE_NAME} ]; then
+        echo >&2 EOS_INSTANCE_NAME environment variable not defined
+        exit 1
+    else
+        yes | xrdsssadmin -k ${EOS_INSTANCE_NAME} -u daemon -g daemon add /tmp/eos.keytab
+        cat /tmp/eos.keytab > /etc/eos.keytab
+        rm /tmp/eos.keytab
+    fi
+fi
+
+# check if this node is a master - if so, create the relevant file
+if [ "z${EOS_SET_MASTER}" = "ztrue" ] || [ ${EOS_SET_MASTER} -eq 1 ]; then
+    touch ${EOS_MQ_MASTER_FILE}
+fi
+
+# start mq
+echo "Starting mq for " $(rpm -q eos-server | sed s/eos-server-//g)
+cd ${XRD_COREDIR}
+exec /usr/bin/xrootd -n mq -c /etc/xrd.cf.mq -l /var/log/eos/xrdlog.mq -Rdaemon
