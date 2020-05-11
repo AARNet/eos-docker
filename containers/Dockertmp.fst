@@ -6,6 +6,7 @@ MAINTAINER David Jericho <david.jericho@aarnet.edu.au>
 MAINTAINER Crystal Chua <crystal.chua@aarnet.edu.au>
 
 RUN rpm --rebuilddb && yum -y install \
+    jq \
     cryptsetup \
     e2fsprogs \
     xfsprogs \
@@ -15,4 +16,6 @@ RUN rpm --rebuilddb && yum -y install \
 
 
 # ----- Copy some scripts so we can run them ----- #
-COPY containers/content/scripts/entrypoint.fst /entrypoint
+COPY containers/content/scripts/entrypoint.fst.generic /entrypoint
+COPY containers/content/scripts/entrypoint.fst         /entrypoint.fst
+COPY containers/content/scripts/entrypoint.fst.k8s     /entrypoint.fst.k8s

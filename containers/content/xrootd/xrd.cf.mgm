@@ -21,6 +21,7 @@ sec.protocol sss -c /etc/eos.keytab -s /etc/eos.keytab
 # GSI authentication
 #sec.protocol gsi -crl:0 -cert:/etc/grid-security/daemon/hostcert.pem -key:/etc/grid-security/daemon/hostkey.pem -gridmap:/etc/grid-security/grid-mapfile -d:0 -gmapopt:2 -vomsat:1 -moninfo:1 -exppxy:/var/eos/auth/gsi#<uid>
 #sec.protocol gsi -crl:0 -cert:/etc/grid-security/daemon/hostcert.pem -key:/etc/grid-security/daemon/hostkey.pem -gridmap:/etc/grid-security/grid-mapfile -d:0 -gmapopt:2 -vomsat:1 -moninfo:1 
+#sec.protocol  gsi -crl:1 -moninfo:1 -cert:/etc/grid-security/daemon/hostcert.pem -key:/etc/grid-security/daemon/hostkey.pem -gridmap:/etc/grid-security/grid-mapfile -d:1 -gmapopt:2
 ###########################################################
 sec.protbind localhost.localdomain sss unix
 sec.protbind localhost sss unix

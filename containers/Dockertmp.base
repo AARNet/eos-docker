@@ -19,14 +19,14 @@ COPY containers/content/yum/*.repo /etc/yum.repos.d/
 
 # ----- Install XRootD ----- #
 RUN rpm --rebuilddb && yum -y install \
-    xrootd${XRD_PACKAGE} \
-    xrootd-libs${XRD_PACKAGE} \
+    eos-xrootd${XRD_PACKAGE}  \
+    xrootd${XRD_PACKAGE}  \
     xrootd-client${XRD_PACKAGE} \
     xrootd-client-libs${XRD_PACKAGE} \
-    xrootd-client-devel${XRD_PACKAGE} \
+    xrootd-libs${XRD_PACKAGE} \
+    xrootd-selinux${XRD_PACKAGE} \
     xrootd-server${XRD_PACKAGE} \
     xrootd-server-libs${XRD_PACKAGE} \
-    xrootd-server-devel${XRD_PACKAGE} \
     xrootd-private-devel${XRD_PACKAGE} && \
     yum clean all && \
     rm -rf /var/cache/yum
@@ -43,6 +43,7 @@ RUN rpm --rebuilddb && yum -y install \
     eos-client${EOS_PACKAGE} \
     eos-test${EOS_PACKAGE} \
     leveldb \
+    nc \
     zeromq && \
     yum clean all && \
     rm -rf /var/cache/yum

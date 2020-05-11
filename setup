@@ -7,13 +7,11 @@ export EOS_DIR=`pwd`
 #==============================================================================
 
 function usage {
-  echo "./${PROGNAME} -d|-s|-a [-t <type>]"
+  echo "./${PROGNAME} -d|-s|-a"
   echo "  -d delete/destroy all existing containers and images"
   echo "  -s start up containers and configure eos"
   echo "  -a do everything, in above order"
   echo "  -e turn on extra debugging: XrdSecDEBUG=3 & XRD_LOGLEVEL=Dump"
-  echo "  -t type of setup: 'dual'"
-  echo "     if not defined, set up a single master with in-memory namespace"
   exit 1
 }
 
@@ -54,10 +52,17 @@ function create_files {
   sudo mkdir  -p ${EOS_DIR}/e/eos
   sudo mkdir  -p ${EOS_DIR}/e/eosxd
   sudo mkdir  -p ${EOS_DIR}/e/fusex
+  sudo mkdir  -p ${EOS_DIR}/e/grid_hammer
   sudo cp ${EOS_DIR}/containers/content/eos.keytab ${EOS_DIR}/e/eos.keytab
+  sudo cp ${EOS_DIR}/containers/content/qdb.keytab ${EOS_DIR}/e/qdb.keytab
+  for i in {1..3}; do
+    sudo mkdir -p ${EOS_DIR}/e/quark${i}/ns
+    sudo mkdir -p ${EOS_DIR}/e/quark${i}/log
+  done
 
-  sudo chown -R daemon:daemon ${EOS_DIR}/e
+  sudo chown -R 2:2 ${EOS_DIR}/e
   sudo chmod 600 ${EOS_DIR}/e/eos.keytab
+  sudo chmod 400 ${EOS_DIR}/e/qdb.keytab
 }
 
 #==============================================================================
@@ -75,13 +80,9 @@ function set_env {
   echo "EOS_MAIL_CC=eos@localhost" >> $eos_env_file
   echo "EOS_MQ_URL=mq-master.testnet" >> $eos_env_file
   echo "EOS_MGM_ALIAS=mgm-master.testnet" >> $eos_env_file
-  echo "EOS_MGM_MASTER1=mgm-master.testnet" >> $eos_env_file
-
-  if [ "${type}" = "dual" ]; then
-    echo "EOS_MGM_MASTER2=mgm-slave.testnet" >> $eos_env_file
-  else
-    echo "EOS_MGM_MASTER2=mgm-master.testnet" >> $eos_env_file
-  fi
+  echo "EOS_USE_QDB=1" >> $eos_env_file
+  echo "EOS_USE_QDB_MASTER=1" >> $eos_env_file
+  echo "EOS_QDB_NODES='quark-1.testnet:7777 quark-2.testnet:7777 quark-3.testnet:7777'" >> $eos_env_file
   if [ $extra ]; then
     echo "XrdSecDEBUG=3" >> $eos_env_file
     echo "XRD_LOGLEVEL=Dump" >> $eos_env_file
@@ -102,26 +103,16 @@ function setup {
 
   sleep 5
  
-  if [ "${type}" = "dual" ]; then
-    # master/slave eos setup
+  # single master setup
+  sudo docker-compose up -d mq-master
 
-    create_files "slave"
+  # start quarkdb
+  sudo docker-compose up -d quark-1
+  sudo docker-compose up -d quark-2
+  sudo docker-compose up -d quark-3
 
-    sudo docker-compose up -d mq-slave sync
-    sudo docker-compose up -d mq-master mgm-master
-    sleep 10
-    sudo docker-compose up -d eossync-files eossync-dirs eossync-iostat eossync-config
-    sleep 10
-    sudo docker-compose up -d mgm-slave
-    sleep 10
-    sudo docker-compose up -d fst
-  else
-    # single master setup
-    sudo docker-compose up -d mq-master
-
-    sudo docker-compose up -d mgm-master
-    sudo docker-compose up -d fst
-  fi
+  sudo docker-compose up -d mgm-master
+  sudo docker-compose up -d fst
 
   sudo docker-compose up -d eosd
   sudo docker-compose up -d eosxd
@@ -129,9 +120,6 @@ function setup {
   echo; echo "===== RUNNING SOME CHECKS =====";
   echo; sudo docker exec mgm-master eos ns || { echo 'Master MGM failed to start - check logs in e/master/log/mgm/xrdlog.mgm' ; exit 1; }
   echo; sudo docker exec mgm-master eos node ls
-  if [ "${type}" = "dual" ]; then
-    echo; sudo docker exec mgm-slave eos ns
-  fi
 
   sleep 5
   echo; echo "===== DOING SOME CONFIGURATION ====="
@@ -141,7 +129,6 @@ function setup {
   sudo docker exec mgm-master eos -r 0 0 -b vid enable https
   sudo docker exec mgm-master eos -r 0 0 -b vid set membership daemon -uids adm
   sudo docker exec mgm-master eos -r 0 0 -b vid set membership daemon -gids adm
-  sudo docker exec mgm-master eos -r 0 0 -b vid set membership daemon +sudo
   sudo docker exec mgm-master eos -r 0 0 -b vid set membership daemon +sudo
   sudo docker exec mgm-master eos -r 0 0 -b vid add gateway eosd.testnet sss
   sudo docker exec mgm-master eos -r 0 0 -b vid add gateway eosxd.testnet sss
@@ -170,6 +157,11 @@ function setup {
   sudo docker exec mgm-master eos space ls
   sudo docker exec mgm-master eos group ls
 
+  for q in "quark-1" "quark-2" "quark-3"; do
+    echo; echo "===== ${q} ====="; echo;
+    sudo docker exec ${q} redis-cli -p 7777 raft-info
+  done
+
   echo; echo "===== TESTING EOSD & EOSXD MOUNTS =====";
   sudo docker exec mgm-master eos -r 0 0 -b attr set sys.acl="u:2:rwxc" /eos/test
 
@@ -183,7 +175,6 @@ function setup {
   done
 
   echo; echo "..All done!"
-
 }
 
 #==============================================================================
@@ -201,7 +192,6 @@ while getopts "dsaet:" opt; do
     s) S=true ;;
     a) A=true ;;
     e) extra=true ;;
-    t) type=${OPTARG} ;;
     \?) usage ;;
   esac
 done

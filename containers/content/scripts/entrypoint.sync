@@ -24,4 +24,8 @@ fi
 # start sync
 echo "Starting sync for " $(rpm -q eos-server | sed s/eos-server-//g)
 cd ${XRD_COREDIR}
-exec /usr/bin/xrootd -n sync -c /etc/xrd.cf.sync -l /var/log/eos/xrdlog.sync -Rdaemon
+
+XRDPROG=/usr/bin/xrootd
+test -e /opt/eos/xrootd/bin/xrootd && XRDPROG=/opt/eos/xrootd/bin/xrootd
+
+exec $XRDPROG -n sync -c /etc/xrd.cf.sync -l /var/log/eos/xrdlog.sync -Rdaemon

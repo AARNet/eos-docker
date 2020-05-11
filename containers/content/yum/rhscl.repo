@@ -1,0 +1,7 @@
+[rhel-server-rhscl-7-rpms]
+metadata_expire = 86400
+Name= AARNet RHEL7 software collections rpms repo
+baseurl=http://repos.aarnet.net.au/yum/redhat/7Server/rhel-server-rhscl-7-rpms
+gpgcheck=1
+gpgkey=http://repos.aarnet.net.au/yum/repokeys/RPM-GPG-KEY-redhat-release
+enabled=1

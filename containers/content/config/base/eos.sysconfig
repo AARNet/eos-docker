@@ -142,7 +142,8 @@ EOS_USE_SHARED_MUTEX=1
 #export EOS_FST_S3_STORAGE_SIZE=1000000000000000
 
 # Set the connection pool size for FST=>FST connections (default is 64 - range 1 to 1024)
-# EOS_FST_XRDIO_CONNECTION_POOL_SIZE=64
+EOS_FST_XRDIO_USE_CONNECTION_POOL=1
+EOS_FST_XRDIO_CONNECTION_POOL_SIZE=1024
 
 # The port the FST should run on
 export EOS_FST_PORT=${EOS_FST_PORT-1095}
@@ -424,7 +425,7 @@ export EOS_FUSE_RDAHEAD_WINDOW=131072
 
 # we use EPOLL and 16 threads 
 export EOS_HTTP_THREADPOOL="epoll"
-export EOS_HTTP_THREADPOOL_SIZE=${EOS_HTTP_THREADPOOL_SIZE:-16}
+export EOS_HTTP_THREADPOOL_SIZE=${EOS_HTTP_THREADPOOL_SIZE:-64}
 
 # memory buffer size per connection 
 #export EOS_HTTP_CONNECTION_MEMORY_LIMIT=134217728 (default 128M)
@@ -448,7 +449,7 @@ export EOS_HTTP_CONNECTION_MEMORY_LIMIT=4194304
 # The path which should be proxied (/ for all)
 #export EOS_PSS_PATH=/
 
-EOS_MGM_GRPC_PORT=50051
+#EOS_MGM_GRPC_PORT=50051
 
 # ------------------------------------------------------------------
 # Test Configuration

@@ -2,6 +2,27 @@
 
 export PATH=$PATH:/sbin:/usr/sbin
 
+# check eos keytab exists, otherwise exit
+if [ ! -s /etc/eos.keytab ]; then
+  if [ -d /etc/k8screds ]; then
+    cp /etc/k8screds/eos.keytab /etc/eos.keytab
+    if [ -e /etc/k8screds/eos.client.keytab ]; then
+      cp /etc/k8screds/eos.client.keytab /etc/eos.client.keytab
+    else
+      cp /etc/k8screds/eos.keytab /etc/eos.client.keytab
+    fi
+  else
+    exit 1
+  fi
+else
+  cp /etc/eos.keytab /etc/eos.client.keytab
+fi
+
+sed -i '0,/eos.keytab/{s/eos.keytab/eos.client.keytab/}' /etc/xrd.cf.fst
+chown daemon:daemon /etc/eos.keytab && chmod 400 /etc/eos.keytab
+chown daemon:daemon /etc/eos.client.keytab && chmod 400 /etc/eos.client.keytab
+
+
 echo "Setting /tmp to mode 1777"
 chmod 1777 /tmp
 if [ $? -ne 0 ]; then
@@ -84,8 +105,6 @@ for DEVICE in ${VOLUMES}; do
   fi
 done
 
-sed -i "s/^xrd.port .*$/xrd.port ${EOS_FST_PORT-1095}/" /etc/xrd.cf.fst
-
 # remove all ipv6
 sed '/ip6/d' /etc/hosts > /etc/tmphosts && cat /etc/tmphosts > /etc/hosts && rm -f /etc/tmphosts && cat /etc/hosts
 sed '/localhost6/d' /etc/hosts > /etc/tmphosts && cat /etc/tmphosts > /etc/hosts && rm -f /etc/tmphosts && cat /etc/hosts
@@ -97,4 +116,19 @@ echo "Starting EOS FST " $(rpm -q eos-server | sed s/eos-server-//g)
 
 . /etc/sysconfig/eos
 
-exec /usr/bin/xrootd -n fst -c /etc/xrd.cf.fst -l /var/log/eos/xrdlog.fst -Rdaemon 
+sed -i "s/^xrd.port .*$/xrd.port ${EOS_FST_PORT-1095}/" /etc/xrd.cf.fst
+
+# remove potential duplicate lines from fst config
+sed -i '/fstofs.qdbcluster/d' /etc/xrd.cf.fst
+sed -i '/fstofs.qdbpassword_file/d' /etc/xrd.cf.fst
+
+# check if we should use quarkdb, if so set correct config
+if [ "${EOS_USE_QDB}" = "true" ] || [ "${EOS_USE_QDB}" = 1 ]; then
+  echo "fstofs.qdbcluster ${EOS_QDB_NODES}" >> /etc/xrd.cf.fst
+  echo "fstofs.qdbpassword_file /etc/eos.client.keytab" >> /etc/xrd.cf.fst
+fi
+
+XRDPROG=/usr/bin/xrootd
+test -e /opt/eos/xrootd/bin/xrootd && XRDPROG=/opt/eos/xrootd/bin/xrootd
+
+exec $XRDPROG -n fst -c /etc/xrd.cf.fst -l /var/log/eos/xrdlog.fst -Rdaemon 

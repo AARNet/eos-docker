@@ -8,4 +8,6 @@ function gracefulShutdown {
   exit
 }
 
+cat /etc/eos/fuse.conf.tmp | jq --arg host ${EOS_FUSE_MGM_ALIAS-localhost}:${MGM_PORT-1094} '.hostport |= $host' > /etc/eos/fuse.conf
+
 exec eosxd -f

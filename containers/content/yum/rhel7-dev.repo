@@ -1,0 +1,15 @@
+[rhel-7-server-debug-rpms]
+metadata_expire = 86400
+Name= AARNet RHEL7 Red Hat Enterprise Linux 7 Server (Debug RPMs)
+baseurl=http://repos.aarnet.net.au/yum/redhat/7Server/rhel-7-server-debug-rpms
+gpgcheck=1
+gpgkey=http://repos.aarnet.net.au/yum/repokeys/RPM-GPG-KEY-redhat-release
+enabled=1
+
+[rhel-7-server-devtools-rpms]
+metadata_expire = 86400
+Name= Red Hat Developer Tools RPMs for Red Hat Enterprise Linux 7 Server
+baseurl=http://repos.aarnet.net.au/yum/redhat/7Server/rhel-7-server-devtools-rpms
+gpgcheck=1
+gpgkey=http://repos.aarnet.net.au/yum/repokeys/RPM-GPG-KEY-redhat-release
+enabled=1
